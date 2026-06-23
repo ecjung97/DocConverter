@@ -1,0 +1,96 @@
+{
+  "source": "/Users/153wcs/Documents/coding/153/DocConverter/DocConverter/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Drag and drop images or PDFs here,\nor double-click files in Finder.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Files...",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a PDF from the list to preview it before merging.",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "No PDF Selected",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add More...",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 170
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear All",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Convert to JPG",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 283
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 287
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 291
+        }
+      },
+      {
+        "comment": "",
+        "key": "Merge order %lld",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 430
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "/Users/153wcs/Documents/coding/153/DocConverter/DocConverter/ContentView.swift" : {
+    "abi-baseline-json" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter.abi.json",
+    "const-values" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter-primary.swiftconstvalues",
+    "dependencies" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter-primary.d",
+    "diagnostics" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter-primary.dia",
+    "objc-header" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter-Swift.h",
+    "swiftdoc" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter.swiftdoc",
+    "swiftmodule" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter.swiftmodule",
+    "swiftsourceinfo" : "/Users/153wcs/Documents/coding/153/DocConverter/build/DocConverter.build/Release/DocConverter.build/Objects-normal/arm64/DocConverter.swiftsourceinfo"
+  }
+}

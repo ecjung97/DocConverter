@@ -9,9 +9,9 @@ struct DocConverterApp: App {
         WindowGroup {
             ContentView(fileURLs: $openedFileURLs)
                 .onOpenURL { url in
-                    // If a file is double-clicked, add it to our list
                     if !openedFileURLs.contains(url) {
                         openedFileURLs.append(url)
+                        openedFileURLs = FileOrdering.sorted(openedFileURLs)
                     }
                 }
         }

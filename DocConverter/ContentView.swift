@@ -112,26 +112,48 @@ struct ContentView: View {
                             // UPDATED: Now loops through indices so we know which image was clicked
                             ForEach(Array(fileURLs.enumerated()), id: \.element) { index, url in
                                 if let image = NSImage(contentsOf: url) {
-                                    Image(nsImage: image)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 150, height: 150)
-                                        .clipped()
-                                        .cornerRadius(8)
-                                        .shadow(radius: draggedItem == url ? 10 : 2)
-                                        .opacity(draggedItem == url ? 0.5 : 1.0)
-                                        
-                                        // NEW: Click to open preview
-                                        .onTapGesture {
-                                            withAnimation {
-                                                previewIndex = index
+                                    ZStack(alignment: .topTrailing) {
+                                        Image(nsImage: image)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 150, height: 150)
+                                            .clipped()
+                                            .cornerRadius(8)
+                                            .shadow(radius: draggedItem == url ? 10 : 2)
+                                            .opacity(draggedItem == url ? 0.5 : 1.0)
+                                            
+                                            // NEW: Click to open preview
+                                            .onTapGesture {
+                                                withAnimation {
+                                                    previewIndex = index
+                                                }
                                             }
+                                            .onDrag {
+                                                self.draggedItem = url
+                                                return NSItemProvider(object: url as NSURL)
+                                            }
+                                            .onDrop(of: [.fileURL], delegate: GridDropDelegate(item: url, items: $fileURLs, draggedItem: $draggedItem))
+                                            
+                                        Button(action: {
+                                            withAnimation {
+                                                if let removeIndex = fileURLs.firstIndex(of: url) {
+                                                    fileURLs.remove(at: removeIndex)
+                                                    if previewIndex == removeIndex {
+                                                        previewIndex = nil
+                                                    } else if let pIndex = previewIndex, pIndex > removeIndex {
+                                                        previewIndex = pIndex - 1
+                                                    }
+                                                }
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.white)
+                                                .background(Circle().fill(Color.black.opacity(0.6)))
                                         }
-                                        .onDrag {
-                                            self.draggedItem = url
-                                            return NSItemProvider(object: url as NSURL)
-                                        }
-                                        .onDrop(of: [.fileURL], delegate: GridDropDelegate(item: url, items: $fileURLs, draggedItem: $draggedItem))
+                                        .buttonStyle(.plain)
+                                        .padding(8)
+                                    }
                                 }
                             }
                         }
@@ -362,15 +384,18 @@ struct ContentView: View {
 
     @discardableResult
     private func applySelection(from urls: [URL]) -> Bool {
-        let validURLs = urls.filter { allowedExtensions.contains($0.pathExtension.lowercased()) }
+        let validURLs = FileOrdering.sorted(urls.filter { allowedExtensions.contains($0.pathExtension.lowercased()) })
         guard !validURLs.isEmpty else { return false }
 
         let pdfURLs = validURLs.filter(isPDF)
         let imageURLs = validURLs.filter(isImage)
 
         if !pdfURLs.isEmpty && imageURLs.isEmpty {
-            fileURLs.append(contentsOf: pdfURLs)
-            fileURLs = Array(NSOrderedSet(array: fileURLs.filter(isPDF))) as! [URL]
+            if allPDFs || fileURLs.isEmpty {
+                fileURLs = FileOrdering.appendingUnique(pdfURLs, to: fileURLs.filter(isPDF))
+            } else {
+                fileURLs = FileOrdering.sortedUnique(pdfURLs)
+            }
             previewIndex = nil
             if let selectedPDFURL, fileURLs.contains(selectedPDFURL) {
                 self.selectedPDFURL = selectedPDFURL
@@ -382,11 +407,10 @@ struct ContentView: View {
 
         if !imageURLs.isEmpty && pdfURLs.isEmpty {
             if allImages || fileURLs.isEmpty {
-                fileURLs.append(contentsOf: imageURLs)
+                fileURLs = FileOrdering.appendingUnique(imageURLs, to: fileURLs.filter(isImage))
             } else {
-                fileURLs = imageURLs
+                fileURLs = FileOrdering.sortedUnique(imageURLs)
             }
-            fileURLs = Array(NSOrderedSet(array: fileURLs.filter(isImage))) as! [URL]
             selectedPDFURL = nil
             return true
         }
@@ -410,6 +434,24 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            
+            Button(action: {
+                withAnimation {
+                    if let removeIndex = fileURLs.firstIndex(of: url) {
+                        fileURLs.remove(at: removeIndex)
+                        if selectedPDFURL == url {
+                            selectedPDFURL = fileURLs.first
+                        }
+                    }
+                }
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 4)
+            
             Image(systemName: "line.3.horizontal")
                 .foregroundStyle(.secondary)
         }
