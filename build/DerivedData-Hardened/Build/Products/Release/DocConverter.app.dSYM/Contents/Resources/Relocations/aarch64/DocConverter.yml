@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/153wcs/Documents/coding/153/DocConverter/Build/DerivedData-Hardened/Build/Products/Release/DocConverter.app/Contents/MacOS/DocConverter'
+relocations:     []
+...
