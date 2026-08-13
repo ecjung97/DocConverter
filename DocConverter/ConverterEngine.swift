@@ -68,36 +68,49 @@ struct ConverterEngine {
             }
         }
 
-    static func convertPDFtoJPG(pdfURL: URL, outputDirectory: URL) throws -> URL {
+    static func convertPDFtoJPG(pdfURL: URL, outputDirectory: URL) throws -> [URL] {
         guard let pdfDocument = PDFDocument(url: pdfURL) else {
             throw ConversionError.pdfLoadFailed
         }
-        guard let page = pdfDocument.page(at: 0) else {
+        guard pdfDocument.pageCount > 0 else {
             throw ConversionError.pdfPageMissing
         }
 
-        let pageRect = page.bounds(for: .mediaBox)
-        let targetSize = scaledSize(for: pageRect.size)
-        let image = page.thumbnail(of: targetSize, for: .mediaBox)
+        let outputBaseName = pdfURL.deletingPathExtension().lastPathComponent
+        let pageNumberWidth = max(2, String(pdfDocument.pageCount).count)
+        var outputURLs: [URL] = []
 
-        guard
-            let tiffData = image.tiffRepresentation,
-            let bitmapImage = NSBitmapImageRep(data: tiffData),
-            let jpegData = bitmapImage.representation(
-                using: .jpeg,
-                properties: [.compressionFactor: 0.82]
-            )
-        else {
-            throw ConversionError.jpegEncodingFailed
+        for pageIndex in 0..<pdfDocument.pageCount {
+            guard let page = pdfDocument.page(at: pageIndex) else {
+                throw ConversionError.pdfPageMissing
+            }
+
+            let pageRect = page.bounds(for: .mediaBox)
+            let targetSize = scaledSize(for: pageRect.size)
+            let image = page.thumbnail(of: targetSize, for: .mediaBox)
+
+            guard
+                let tiffData = image.tiffRepresentation,
+                let bitmapImage = NSBitmapImageRep(data: tiffData),
+                let jpegData = bitmapImage.representation(
+                    using: .jpeg,
+                    properties: [.compressionFactor: 0.82]
+                )
+            else {
+                throw ConversionError.jpegEncodingFailed
+            }
+
+            let pageNumber = String(format: "%0*d", pageNumberWidth, pageIndex + 1)
+            let outputURL = outputDirectory.appendingPathComponent("\(outputBaseName)_Page_\(pageNumber).jpg")
+            do {
+                try jpegData.write(to: outputURL, options: .atomic)
+            } catch {
+                throw ConversionError.writeFailed
+            }
+            outputURLs.append(outputURL)
         }
 
-        let outputURL = outputDirectory.appendingPathComponent("Converted_Page.jpg")
-        do {
-            try jpegData.write(to: outputURL, options: .atomic)
-        } catch {
-            throw ConversionError.writeFailed
-        }
-        return outputURL
+        return outputURLs
     }
 
     static func mergePDFs(pdfURLs: [URL], outputURL: URL) throws {
