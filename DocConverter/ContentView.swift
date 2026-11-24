@@ -28,6 +28,9 @@ struct ContentView: View {
     @State private var isTargeted: Bool = false
     @State private var draggedItem: URL? = nil
     @State private var selectedPDFURL: URL? = nil
+    @State private var jpgExportMessage = ""
+    @State private var jpgExportSucceeded = false
+    @State private var showingJPGExportResult = false
     
     // NEW: State variable to track which image is currently being previewed
     @State private var previewIndex: Int? = nil
@@ -62,13 +65,18 @@ struct ContentView: View {
                 } else if fileURLs.count == 1, let url = fileURLs.first {
                     // Single File View
                     if isPDF(url) {
-                        PDFKitView(url: url)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        pdfPreview(for: url)
                     } else if isImage(url) {
                         if let image = NSImage(contentsOf: url) {
-                            Image(nsImage: image)
-                                .resizable()
-                                .scaledToFit()
+                            VStack(spacing: 8) {
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                previewFilename(for: url)
+                                    .padding(.horizontal, 12)
+                                    .padding(.bottom, 8)
+                            }
                         }
                     }
                 } else if allPDFs {
@@ -93,7 +101,7 @@ struct ContentView: View {
 
                         Group {
                             if let previewURL = currentPDFPreviewURL {
-                                PDFKitView(url: previewURL)
+                                pdfPreview(for: previewURL)
                             } else {
                                 ContentUnavailableView(
                                     "No PDF Selected",
@@ -112,48 +120,52 @@ struct ContentView: View {
                             // UPDATED: Now loops through indices so we know which image was clicked
                             ForEach(Array(fileURLs.enumerated()), id: \.element) { index, url in
                                 if let image = NSImage(contentsOf: url) {
-                                    ZStack(alignment: .topTrailing) {
-                                        Image(nsImage: image)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: 150, height: 150)
-                                            .clipped()
-                                            .cornerRadius(8)
-                                            .shadow(radius: draggedItem == url ? 10 : 2)
-                                            .opacity(draggedItem == url ? 0.5 : 1.0)
+                                    VStack(spacing: 6) {
+                                        ZStack(alignment: .topTrailing) {
+                                            Image(nsImage: image)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 150, height: 150)
+                                                .clipped()
+                                                .cornerRadius(8)
+                                                .shadow(radius: draggedItem == url ? 10 : 2)
+                                                .opacity(draggedItem == url ? 0.5 : 1.0)
                                             
-                                            // NEW: Click to open preview
-                                            .onTapGesture {
-                                                withAnimation {
-                                                    previewIndex = index
-                                                }
-                                            }
-                                            .onDrag {
-                                                self.draggedItem = url
-                                                return NSItemProvider(object: url as NSURL)
-                                            }
-                                            .onDrop(of: [.fileURL], delegate: GridDropDelegate(item: url, items: $fileURLs, draggedItem: $draggedItem))
-                                            
-                                        Button(action: {
-                                            withAnimation {
-                                                if let removeIndex = fileURLs.firstIndex(of: url) {
-                                                    fileURLs.remove(at: removeIndex)
-                                                    if previewIndex == removeIndex {
-                                                        previewIndex = nil
-                                                    } else if let pIndex = previewIndex, pIndex > removeIndex {
-                                                        previewIndex = pIndex - 1
+                                                // NEW: Click to open preview
+                                                .onTapGesture {
+                                                    withAnimation {
+                                                        previewIndex = index
                                                     }
                                                 }
+                                                .onDrag {
+                                                    self.draggedItem = url
+                                                    return NSItemProvider(object: url as NSURL)
+                                                }
+                                                .onDrop(of: [.fileURL], delegate: GridDropDelegate(item: url, items: $fileURLs, draggedItem: $draggedItem))
+                                            
+                                            Button(action: {
+                                                withAnimation {
+                                                    if let removeIndex = fileURLs.firstIndex(of: url) {
+                                                        fileURLs.remove(at: removeIndex)
+                                                        if previewIndex == removeIndex {
+                                                            previewIndex = nil
+                                                        } else if let pIndex = previewIndex, pIndex > removeIndex {
+                                                            previewIndex = pIndex - 1
+                                                        }
+                                                    }
+                                                }
+                                            }) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.system(size: 20))
+                                                    .foregroundColor(.white)
+                                                    .background(Circle().fill(Color.black.opacity(0.6)))
                                             }
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 20))
-                                                .foregroundColor(.white)
-                                                .background(Circle().fill(Color.black.opacity(0.6)))
+                                            .buttonStyle(.plain)
+                                            .padding(8)
                                         }
-                                        .buttonStyle(.plain)
-                                        .padding(8)
+                                        previewFilename(for: url)
                                     }
+                                    .frame(width: 150)
                                 }
                             }
                         }
@@ -202,14 +214,21 @@ struct ContentView: View {
                             let openPanel = NSOpenPanel()
                             openPanel.canChooseDirectories = true
                             openPanel.canChooseFiles = false
+                            openPanel.allowsMultipleSelection = false
                             openPanel.prompt = "Select Save Folder"
+                            openPanel.message = "A folder named after the PDF will be created here for all JPG pages."
                             openPanel.begin { response in
                                 if response == .OK, let outDir = openPanel.url {
                                     do {
-                                        _ = try ConverterEngine.convertPDFtoJPG(pdfURL: url, outputDirectory: outDir)
+                                        let outputURLs = try ConverterEngine.convertPDFtoJPG(pdfURL: url, outputDirectory: outDir)
+                                        jpgExportSucceeded = true
+                                        let savedDirectory = outputURLs[0].deletingLastPathComponent()
+                                        jpgExportMessage = "Saved all \(outputURLs.count) pages as JPG images in \(savedDirectory.path)."
                                     } catch {
-                                        print("Conversion failed: \(error.localizedDescription)")
+                                        jpgExportSucceeded = false
+                                        jpgExportMessage = "\(error.localizedDescription) Some pages may already have been saved."
                                     }
+                                    showingJPGExportResult = true
                                 }
                             }
                         }
@@ -233,11 +252,15 @@ struct ContentView: View {
                     
                     // The Full Size Image
                     if let image = NSImage(contentsOf: fileURLs[index]) {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .padding(40)
-                            .id(index) // Forces SwiftUI to refresh the image during transitions
+                        VStack(spacing: 8) {
+                            Image(nsImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            previewFilename(for: fileURLs[index], color: .white.opacity(0.8))
+                        }
+                        .padding(40)
+                        .id(index) // Forces SwiftUI to refresh the image during transitions
                     }
                     
                     // Navigation UI (Chevrons & Close Button)
@@ -298,6 +321,11 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 800, minHeight: 600)
+        .alert(jpgExportSucceeded ? "JPG Export Complete" : "JPG Export Failed", isPresented: $showingJPGExportResult) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(jpgExportMessage)
+        }
         .dropDestination(for: URL.self) { items, location in
             applySelection(from: items)
         } isTargeted: { targeted in
@@ -307,6 +335,26 @@ struct ContentView: View {
         }
     }
     
+    private func previewFilename(for url: URL, color: Color = .secondary) -> some View {
+        Text(url.lastPathComponent)
+            .font(.caption)
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: .infinity)
+            .help(url.lastPathComponent)
+    }
+
+    private func pdfPreview(for url: URL) -> some View {
+        VStack(spacing: 8) {
+            PDFKitView(url: url)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            previewFilename(for: url)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+        }
+    }
+
     // Helper function for navigating backward
     private func previousImage() {
         if let current = previewIndex, current > 0 {

@@ -11,7 +11,7 @@ DocConverter is a macOS SwiftUI app for previewing, converting, and merging PDF 
 - Merge multiple PDFs into one PDF.
 - Preview PDFs before merging.
 - Reorder images or PDFs by dragging thumbnails/list rows before export.
-- Convert the first page of a PDF to a JPG image.
+- Convert every page of a PDF to a separate JPG image.
 - Navigate image previews with on-screen controls and keyboard shortcuts.
 
 ## Supported Formats
@@ -79,7 +79,43 @@ Use `Open Files...`, drag files into the window, or double-click supported files
 2. Click `Convert to JPG`.
 3. Choose an output folder.
 
-DocConverter currently converts the first page of the PDF to JPG.
+DocConverter creates a folder named after the PDF inside the selected output folder. Every page is saved inside it in order as `<PDF name>_Page_01.jpg`, `<PDF name>_Page_02.jpg`, and so on. If that folder name already exists, a new folder such as `<PDF name> (2)` is created to preserve existing files. The completion dialog reports the number of pages saved and the actual folder path; conversion failures are shown in an error dialog.
+
+JPG export renders at 300 dpi with maximum JPEG quality, instead of using PDF points as pixels (approximately 72 dpi). The JPEG stores its resolution so converting it back to PDF preserves the physical page size. Image import uses full-resolution pixels, respects EXIF rotation/mirroring, and uses maximum PDF image compression quality. JPEG is still lossy: use the original PDFs and `Merge PDFs` when no image editing is needed. Increasing resolution cannot recover detail already lost in an earlier conversion. Higher-quality exports take more storage; pages exceeding 100 megapixels at 300 dpi report an error instead of silently reducing resolution.
+
+Rebuild the app after changing the source. Older app bundles can still export only the first page. The release build can be generated with:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
+  -project DocConverter.xcodeproj -scheme DocConverter -configuration Release \
+  -derivedDataPath /tmp/DocConverter-DerivedData \
+  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual build
+```
+
+Run the freshly built `/tmp/DocConverter-DerivedData/Build/Products/Release/DocConverter.app`.
+
+Alternatively, build a locally signed app for the current Mac using the installed Swift command-line tools and the bundled app resources:
+
+```sh
+bash scripts/build-local.sh
+open build/Release/DocConverter.app
+```
+
+The local build script preserves the app's sandbox entitlements. With newer SwiftUI SDKs, it also uses Xcode's SwiftUI compiler plugin.
+
+### PDF export regression check
+
+```sh
+mkdir -p /tmp/DocConverter-tests
+xcrun swiftc -module-cache-path /tmp/DocConverter-tests/ModuleCache \
+  DocConverter/ConverterEngine.swift Tests/PDFToJPGRegression.swift \
+  -o /tmp/DocConverter-tests/pdf-to-jpg
+/tmp/DocConverter-tests/pdf-to-jpg
+xcrun swiftc -module-cache-path /tmp/DocConverter-tests/ModuleCache \
+  DocConverter/ConverterEngine.swift Tests/ConversionQualityRegression.swift \
+  -o /tmp/DocConverter-tests/quality
+/tmp/DocConverter-tests/quality
+```
 
 ## Project Structure
 
@@ -103,6 +139,6 @@ Key files:
 
 ## Notes
 
-- Image-to-PDF conversion preserves image orientation metadata by creating a transformed image thumbnail before inserting it into the PDF.
+- Image-to-PDF conversion applies EXIF orientation to full-resolution pixels and preserves the image's DPI when sizing the PDF page.
 - PDF merging preserves page order based on the order shown in the app.
 - Mixed PDF and image selections are not merged together; use image-to-PDF and PDF merge as separate workflows.
